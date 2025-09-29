@@ -1,0 +1,71 @@
+name: 'cads_ingester'
+services:
+  localstack:
+    container_name: "cadsingstr-localstack-emulator"
+    image: localstack/localstack:3.0.2
+    ports:
+      - "4573:4566"
+    env_file:
+      - 'compose/aws.env'
+    environment:
+      DEBUG: ${DEBUG:-1}
+      LS_LOG: WARN # Localstack DEBUG Level
+      SERVICES: s3,sns,sqs,firehose
+    volumes:
+      - "./localstack_data:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - ./compose/start-localstack.sh:/etc/localstack/init/ready.d/start-localstack.sh
+    healthcheck:
+      test: ['CMD', 'curl', 'http://cadsingstr-localstack-emulator:4566/health']
+      interval: 5s
+      start_period: 5s
+      retries: 5
+    networks:
+      - cdp-tenant
+
+  redis:
+    container_name: "cadsingstr-redis"
+    image: redis:7.2.3-alpine3.18
+    ports:
+      - '6373:6379'
+    restart: always
+    networks:
+      - cdp-tenant
+
+  mongodb:
+    container_name: cadsingstr_mongodb
+    image: mongo:6.0.13
+    networks:
+      - cdp-tenant
+    ports:
+      - '27073:27017'
+    volumes:
+      - mongodb-data:/data
+    restart: always
+  
+  cads_ingester:
+    container_name: "cads_ingester"
+    platform: linux
+    image: cads_ingester
+    build: ./
+    ports:
+      - '5568:5568'
+    depends_on:
+      localstack:
+        condition: service_healthy
+      mongodb:
+        condition: service_started
+    env_file:
+      - 'compose/aws.env'
+    environment:
+      PORT: 5568
+      LOCALSTACK_ENDPOINT: http://cadsingstr-localstack-emulator:4566
+    networks:
+      - cdp-tenant
+
+volumes:
+  mongodb-data:
+
+networks:
+  cdp-tenant:
+    name: cdp-tenant

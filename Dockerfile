@@ -13,17 +13,25 @@ RUN apt update && \
 
 # Build stage image
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+ARG BUILD_CONFIGURATION=Release
+ENV BUILD_CONFIGURATION=${BUILD_CONFIGURATION}
 WORKDIR /src
 
-COPY . .
-WORKDIR "/src"
+COPY ["src/Cads.Ingester/Cads.Ingester.csproj", "Cads.Ingester/"]
+COPY ["src/Cads.Infrastructure/Cads.Infrastructure.csproj", "Cads.Infrastructure/"]
+COPY ["src/Cads.Application/Cads.Application.csproj", "Cads.Application/"]
+COPY ["src/Cads.Core/Cads.Core.csproj", "Cads.Core/"]
 
-# unit test and code coverage
-RUN dotnet test LsCadsIngester.Test
+RUN dotnet restore "Cads.Ingester/Cads.Ingester.csproj" -r linux-x64 -v n
+RUN dotnet restore "Cads.Infrastructure/Cads.Infrastructure.csproj" -r linux-x64 -v n
+RUN dotnet restore "Cads.Application/Cads.Application.csproj" -r linux-x64 -v n
+RUN dotnet restore "Cads.Core/Cads.Core.csproj" -r linux-x64 -v n
+
+COPY ["src/", "."]
 
 FROM build AS publish
-RUN dotnet publish LsCadsIngester -c Release -o /app/publish /p:UseAppHost=false
-
+WORKDIR "/src/Cads.Ingester"
+RUN dotnet publish "Cads.Ingester.csproj" -v n -c ${BUILD_CONFIGURATION} -o /app/publish -r linux-x64 --no-restore /p:UseAppHost=false
 
 ENV ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
 
@@ -32,4 +40,4 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 EXPOSE 8085
-ENTRYPOINT ["dotnet", "LsCadsIngester.dll"]
+ENTRYPOINT ["dotnet", "Cads.Ingester.dll"]
