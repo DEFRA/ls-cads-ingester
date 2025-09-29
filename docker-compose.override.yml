@@ -1,0 +1,18 @@
+services:
+  cads_ingester:
+    labels:
+      com.microsoft.visual-studio.project-name: "Cads.Ingester"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=5568
+      - AWS__ServiceURL=http://cadsingstr-localstack-emulator:4566
+      - Mongo__DatabaseUri=mongodb://cadsingstr_mongodb:27017
+      - QueueConsumerOptions__IntakeEventQueueOptions__QueueUrl=http://sqs.eu-west-2.127.0.0.1:4566/000000000000/ls_cads_cts_intake_queue
+      - ApiClients__CadsApi__BaseUrl=http://cads_api:5565/
+    ports:
+      - "5568"
+    volumes:
+      - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
+      - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
+      - ${APPDATA}/ASP.NET/Https:/home/app/.aspnet/https:ro
+      - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro
